@@ -1,7 +1,5 @@
 import {
-  GEO_URL,
-  WEATHER_URL,
-  PROXY_BASE,
+  WTTR_URL,
   getWeatherDescription,
   setupUnitToggle,
   getSavedCities,
@@ -9,9 +7,7 @@ import {
   setupThemeToggle,
   getWeatherTheme,
 } from "./script.js";
-const REVERSE_GEO_URL = PROXY_BASE
-  ? `${PROXY_BASE}/reverse`
-  : "https://nominatim.openstreetmap.org/reverse";
+
 const form = document.querySelector(".form");
 const input = document.querySelector("#city-input");
 const grid = document.querySelector(".weather-card-grid");
@@ -19,30 +15,21 @@ let savedCities = getSavedCities();
 let currentUnit = localStorage.getItem("weather_unit") || "C";
 
 async function getCityWeather(cityName) {
-  const geoRes = await fetch(
-    `${GEO_URL}?name=${encodeURIComponent(cityName)}&count=1&language=ru&format=json`,
+  const res = await fetch(
+    `${WTTR_URL}/${encodeURIComponent(cityName)}?format=j1`,
   );
-  const geoData = await geoRes.json();
+  if (!res.ok) throw new Error(`Город "${cityName}" не найден`);
 
-  if (!geoData.results || geoData.results.length === 0) {
-    throw new Error(`Город "${cityName}" не найден`);
-  }
-
-  const { latitude, longitude, name } = geoData.results[0];
-
-  const weatherRes = await fetch(
-    `${WEATHER_URL}?latitude=${latitude}&longitude=${longitude}` +
-      `&current=temperature_2m,weather_code` +
-      `&timezone=auto`,
-  );
-  const weatherData = await weatherRes.json();
+  const data = await res.json();
+  const area = data.nearest_area[0];
+  const current = data.current_condition[0];
 
   return {
-    name: name,
-    temp: weatherData.current.temperature_2m,
-    code: weatherData.current.weather_code,
-    lat: latitude,
-    lon: longitude,
+    name: cityName,
+    temp: parseFloat(current.temp_C),
+    code: parseInt(current.weatherCode),
+    lat: parseFloat(area.latitude),
+    lon: parseFloat(area.longitude),
   };
 }
 
@@ -57,11 +44,7 @@ function renderCard(data) {
   }
 
   const card = document.createElement("article");
-  card.className = "weather-card";
-
-  const cardTheme = getWeatherTheme(data.code);
-  card.classList.add(cardTheme);
-
+  card.className = `weather-card ${getWeatherTheme(data.code)}`;
   card.innerHTML = `
     <h2 class="weather-card__title">${data.name}</h2>
     <p class="weather-card__temper">${displayTemp}°${currentUnit}</p>
@@ -73,54 +56,33 @@ function renderCard(data) {
 }
 
 async function CurrentLocation() {
-  if (!navigator.geolocation) {
-    console.log("Геолокация не поддерживается браузером");
-    return;
-  }
+  if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
     async (position) => {
       const { latitude, longitude } = position.coords;
       try {
-        const res = await fetch(
-          `${REVERSE_GEO_URL}?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`,
-        );
+        const res = await fetch(`${WTTR_URL}/${latitude},${longitude}?format=j1`);
+        if (!res.ok) return;
         const data = await res.json();
+        const cityName = data.nearest_area[0].areaName[0].value;
 
-        const address = data.address || {};
-        const cityName =
-          address.city ||
-          address.town ||
-          address.village ||
-          address.state ||
-          "Моё местоположение";
-
-        if (
-          !savedCities.some((c) => c.toLowerCase() === cityName.toLowerCase())
-        ) {
+        if (!savedCities.some((c) => c.toLowerCase() === cityName.toLowerCase())) {
           savedCities.unshift(cityName);
           saveCities(savedCities);
-
           const weatherData = await getCityWeather(cityName);
           renderCard(weatherData);
-          console.log(`Добавлен город по геолокации: ${cityName}`);
         }
       } catch (err) {
         console.warn("Не удалось определить город по координатам:", err);
       }
     },
-    (error) => {
-      console.log(
-        "Доступ к геолокации запрещен или недоступен:",
-        error.message,
-      );
-    },
+    (error) => console.log("Доступ к геолокации запрещён:", error.message),
     { enableHighAccuracy: false, timeout: 5000, maximumAge: 0 },
   );
 }
 
 async function initGrid() {
   grid.innerHTML = "";
-
   await CurrentLocation();
 
   const weatherPromises = savedCities.map(async (city) => {
@@ -144,10 +106,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const city = input.value.trim();
 
-  if (
-    !city ||
-    savedCities.some((c) => c.toLowerCase() === city.toLowerCase())
-  ) {
+  if (!city || savedCities.some((c) => c.toLowerCase() === city.toLowerCase())) {
     alert("Этот город уже в списке!");
     return;
   }
