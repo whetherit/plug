@@ -1,5 +1,6 @@
 import {
-  WTTR_URL,
+  GEO_URL,
+  WEATHER_URL,
   getWeatherDescription,
   setupUnitToggle,
   getSavedCities,
@@ -8,6 +9,7 @@ import {
   getWeatherTheme,
 } from "./script.js";
 
+const REVERSE_GEO_URL = "https://svtapp.ru/proxy/reverse";
 const form = document.querySelector(".form");
 const input = document.querySelector("#city-input");
 const grid = document.querySelector(".weather-card-grid");
@@ -15,21 +17,30 @@ let savedCities = getSavedCities();
 let currentUnit = localStorage.getItem("weather_unit") || "C";
 
 async function getCityWeather(cityName) {
-  const res = await fetch(
-    `${WTTR_URL}/${encodeURIComponent(cityName)}?format=j1`,
+  const geoRes = await fetch(
+    `${GEO_URL}?name=${encodeURIComponent(cityName)}&count=1&language=ru&format=json`,
   );
-  if (!res.ok) throw new Error(`Город "${cityName}" не найден`);
+  const geoData = await geoRes.json();
 
-  const data = await res.json();
-  const area = data.nearest_area[0];
-  const current = data.current_condition[0];
+  if (!geoData.results || geoData.results.length === 0) {
+    throw new Error(`Город "${cityName}" не найден`);
+  }
+
+  const { latitude, longitude, name } = geoData.results[0];
+
+  const weatherRes = await fetch(
+    `${WEATHER_URL}?latitude=${latitude}&longitude=${longitude}` +
+      `&current=temperature_2m,weather_code` +
+      `&timezone=auto`,
+  );
+  const weatherData = await weatherRes.json();
 
   return {
-    name: cityName,
-    temp: parseFloat(current.temp_C),
-    code: parseInt(current.weatherCode),
-    lat: parseFloat(area.latitude),
-    lon: parseFloat(area.longitude),
+    name,
+    temp: weatherData.current.temperature_2m,
+    code: weatherData.current.weather_code,
+    lat: latitude,
+    lon: longitude,
   };
 }
 
@@ -39,12 +50,11 @@ function renderCard(data) {
   link.className = "weather-card__link";
 
   let displayTemp = Math.round(data.temp);
-  if (currentUnit === "F") {
-    displayTemp = Math.round(data.temp * 1.8 + 32);
-  }
+  if (currentUnit === "F") displayTemp = Math.round(data.temp * 1.8 + 32);
 
   const card = document.createElement("article");
-  card.className = `weather-card ${getWeatherTheme(data.code)}`;
+  card.className = "weather-card";
+  card.classList.add(getWeatherTheme(data.code));
   card.innerHTML = `
     <h2 class="weather-card__title">${data.name}</h2>
     <p class="weather-card__temper">${displayTemp}°${currentUnit}</p>
@@ -61,10 +71,13 @@ async function CurrentLocation() {
     async (position) => {
       const { latitude, longitude } = position.coords;
       try {
-        const res = await fetch(`${WTTR_URL}/${latitude},${longitude}?format=j1`);
-        if (!res.ok) return;
+        const res = await fetch(
+          `${REVERSE_GEO_URL}?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`,
+        );
         const data = await res.json();
-        const cityName = data.nearest_area[0].areaName[0].value;
+        const address = data.address || {};
+        const cityName =
+          address.city || address.town || address.village || address.state || "Моё местоположение";
 
         if (!savedCities.some((c) => c.toLowerCase() === cityName.toLowerCase())) {
           savedCities.unshift(cityName);

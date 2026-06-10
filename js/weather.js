@@ -1,5 +1,6 @@
 import {
-  WTTR_URL,
+  GEO_URL,
+  WEATHER_URL,
   getWeatherDescription,
   setupUnitToggle,
   getSavedCities,
@@ -10,11 +11,8 @@ import {
 
 const params = new URLSearchParams(window.location.search);
 const cityName = params.get("city") || "Москва";
-const cityLat = params.get("lat");
-const cityLon = params.get("lon");
-const wttrQuery =
-  cityLat && cityLon ? `${cityLat},${cityLon}` : encodeURIComponent(cityName);
-
+let coordsCache = null;
+let weatherDataCache = null;
 const cityEl = document.querySelector(".weather__city");
 const tempEl = document.querySelector(".weather__temper");
 const wthrEl = document.querySelector(".weather__wthr");
@@ -23,17 +21,16 @@ const detailsGrid = document.querySelector(".card-grid");
 const backBtn = document.querySelector(".back-btn");
 const favBtn = document.querySelector(".favorite-btn");
 let currentUnit = localStorage.getItem("weather_unit") || "C";
-let weatherDataCache = null;
 
 function getWeatherEmoji(code) {
-  if (code === 113) return "☀️";
-  if ([116, 119].includes(code)) return "⛅";
-  if ([122, 143, 248, 260].includes(code)) return "☁️";
-  if ([200, 386, 389, 392, 395].includes(code)) return "⛈";
-  if ([179, 227, 230, 323, 326, 329, 332, 335, 338, 368, 371].includes(code))
-    return "🌨";
-  if ([176, 353, 356, 359, 362, 365].includes(code)) return "🌦";
-  return "🌧";
+  if (code === 0) return "☀️";
+  if (code >= 1 && code <= 3) return "⛅";
+  if (code >= 45 && code <= 48) return "🌫";
+  if (code >= 51 && code <= 67) return "🌧";
+  if (code >= 71 && code <= 77) return "🌨";
+  if (code >= 80 && code <= 82) return "🌦";
+  if (code >= 95) return "⛈";
+  return "🌤";
 }
 
 function formatTemp(celsius) {
@@ -42,24 +39,13 @@ function formatTemp(celsius) {
   return `${Math.round(celsius)}°C`;
 }
 
-function getCurrentHourlySlot(hourly) {
-  const currentHour = new Date().getHours();
-  let best = 0;
-  for (let i = 0; i < hourly.length; i++) {
-    if (parseInt(hourly[i].time) / 100 <= currentHour) best = i;
-  }
-  return best;
-}
-
 setupUnitToggle((newUnit) => {
   currentUnit = newUnit;
   if (weatherDataCache) {
-    const current = weatherDataCache.current_condition[0];
-    const hourly = weatherDataCache.weather[0].hourly;
-    renderTemperatures(current);
-    renderDetails(current, hourly);
-    renderForecast(weatherDataCache.weather);
-    renderHourlyForecast(weatherDataCache.weather);
+    renderTemperatures(weatherDataCache.current);
+    renderDetails(weatherDataCache.current);
+    renderForecast(weatherDataCache.daily);
+    renderHourlyForecast(weatherDataCache.hourly);
   }
 });
 
@@ -82,20 +68,33 @@ favBtn.addEventListener("click", () => {
 
 async function loadAllData() {
   try {
-    const res = await fetch(`${WTTR_URL}/${wttrQuery}?format=j1`);
-    if (!res.ok) throw new Error("Город не найден");
+    const geoRes = await fetch(
+      `${GEO_URL}?name=${encodeURIComponent(cityName)}&count=1&language=ru&format=json`,
+    );
+    const geoData = await geoRes.json();
+    if (!geoData.results || geoData.results.length === 0)
+      throw new Error("Город не найден");
 
-    weatherDataCache = await res.json();
-    const current = weatherDataCache.current_condition[0];
-    const hourly = weatherDataCache.weather[0].hourly;
+    const { latitude, longitude, name } = geoData.results[0];
+    coordsCache = { latitude, longitude };
+    cityEl.textContent = name;
+    document.title = `${name} / Панель погоды`;
 
-    cityEl.textContent = cityName;
-    document.title = `${cityName} / Панель погоды`;
+    const weatherRes = await fetch(
+      `${WEATHER_URL}?latitude=${latitude}&longitude=${longitude}` +
+        `&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m,precipitation_probability,apparent_temperature,surface_pressure` +
+        `&hourly=temperature_2m,weather_code,precipitation_probability` +
+        `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
+        `&timezone=auto&forecast_days=6`,
+    );
+    if (!weatherRes.ok) throw new Error("Ошибка загрузки погоды");
 
-    renderTemperatures(current);
-    renderDetails(current, hourly);
-    renderForecast(weatherDataCache.weather);
-    renderHourlyForecast(weatherDataCache.weather);
+    weatherDataCache = await weatherRes.json();
+
+    renderTemperatures(weatherDataCache.current);
+    renderDetails(weatherDataCache.current);
+    renderForecast(weatherDataCache.daily);
+    renderHourlyForecast(weatherDataCache.hourly);
 
     const saved = getSavedCities();
     if (saved.some((c) => c.toLowerCase() === cityName.toLowerCase())) {
@@ -120,29 +119,25 @@ async function loadAllData() {
 }
 
 function renderTemperatures(current) {
-  const temp = parseFloat(current.temp_C);
-  tempEl.textContent = formatTemp(temp);
-  tempEl.value = temp;
-  wthrEl.textContent = getWeatherDescription(parseInt(current.weatherCode));
+  tempEl.textContent = formatTemp(current.temperature_2m);
+  tempEl.value = current.temperature_2m;
+  wthrEl.textContent = getWeatherDescription(current.weather_code);
 
   const mainEl = document.querySelector("main");
   if (mainEl) {
     mainEl.classList.remove("theme-sunny", "theme-cloudy", "theme-rainy", "theme-snowy");
-    mainEl.classList.add(getWeatherTheme(parseInt(current.weatherCode)));
+    mainEl.classList.add(getWeatherTheme(current.weather_code));
   }
 }
 
-function renderDetails(current, hourly) {
+function renderDetails(current) {
   const cards = detailsGrid.querySelectorAll(".card");
-  const slotIdx = getCurrentHourlySlot(hourly);
-  const precipChance = parseInt(hourly[slotIdx]?.chanceofrain ?? 0);
-
   const metrics = [
-    { label: "💧 Влажность", val: `${current.humidity}%` },
-    { label: "💨 Скорость ветра", val: `${current.windspeedKmph} км/ч` },
-    { label: "🌧 Вероятность осадков", val: `${precipChance}%` },
-    { label: "🌡 Ощущается как", val: formatTemp(parseFloat(current.FeelsLikeC)) },
-    { label: "📉 Давление", val: `${current.pressure} гПа` },
+    { label: "💧 Влажность", val: `${current.relative_humidity_2m ?? "—"}%` },
+    { label: "💨 Скорость ветра", val: `${current.wind_speed_10m ?? "—"} км/ч` },
+    { label: "🌧 Вероятность осадков", val: `${current.precipitation_probability ?? 0}%` },
+    { label: "🌡 Ощущается как", val: formatTemp(current.apparent_temperature) },
+    { label: "📉 Давление", val: `${Math.round(current.surface_pressure ?? 0)} гПа` },
   ];
 
   cards.forEach((card, i) => {
@@ -152,42 +147,38 @@ function renderDetails(current, hourly) {
   });
 }
 
-function renderForecast(weather) {
+function renderForecast(daily) {
   forecastGrid.innerHTML = "";
-  weather.forEach((day) => {
-    const date = new Date(day.date);
-    const code = parseInt(day.hourly[4]?.weatherCode ?? day.hourly[0].weatherCode);
+  const daysCount = Math.min(6, daily.time.length);
+
+  for (let i = 0; i < daysCount; i++) {
+    const date = new Date(daily.time[i]);
     const li = document.createElement("li");
     li.className = "six-days";
     li.innerHTML = `
-      <time datetime="${day.date}" class="six-days__date">
+      <time datetime="${daily.time[i]}" class="six-days__date">
         ${date.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short" })}
       </time>
-      <span>${formatTemp(parseFloat(day.mintempC))} / ${formatTemp(parseFloat(day.maxtempC))} · ${getWeatherDescription(code)}</span>
+      <span>${formatTemp(daily.temperature_2m_min[i])} / ${formatTemp(daily.temperature_2m_max[i])} · ${getWeatherDescription(daily.weather_code[i])}</span>
     `;
     forecastGrid.appendChild(li);
-  });
+  }
 }
 
-function renderHourlyForecast(weather) {
+function renderHourlyForecast(hourly) {
   document.querySelector(".hourly-card")?.remove();
 
-  const currentHour = new Date().getHours();
-  const slots = [];
+  const now = new Date();
+  const currentHourStr =
+    now.getFullYear() + "-" +
+    String(now.getMonth() + 1).padStart(2, "0") + "-" +
+    String(now.getDate()).padStart(2, "0") + "T" +
+    String(now.getHours()).padStart(2, "0");
 
-  for (const day of weather) {
-    for (const h of day.hourly) {
-      slots.push({ ...h, date: day.date });
-    }
-  }
+  let startIndex = hourly.time.findIndex((t) => t.startsWith(currentHourStr));
+  if (startIndex === -1) startIndex = 0;
 
-  const startIdx = slots.findIndex(
-    (h, i) =>
-      parseInt(h.time) / 100 <= currentHour &&
-      (i === slots.length - 1 || parseInt(slots[i + 1].time) / 100 > currentHour || slots[i + 1].date !== h.date),
-  );
-  const from = startIdx === -1 ? 0 : startIdx;
-  const next = slots.slice(from, from + 5);
+  const nextHoursCount = Math.min(12, hourly.time.length - startIndex);
 
   let hourlyHTML = `
     <div class="hourly-card">
@@ -195,11 +186,13 @@ function renderHourlyForecast(weather) {
       <div class="hourly-scroll">
   `;
 
-  for (const h of next) {
-    const hour = String(parseInt(h.time) / 100).padStart(2, "0") + ":00";
-    const temp = formatTemp(parseFloat(h.tempC));
-    const precip = parseInt(h.chanceofrain ?? 0);
-    const code = parseInt(h.weatherCode);
+  for (let i = 0; i < nextHoursCount; i++) {
+    const idx = startIndex + i;
+    const date = new Date(hourly.time[idx]);
+    const hour = date.getHours().toString().padStart(2, "0") + ":00";
+    const temp = formatTemp(hourly.temperature_2m[idx]);
+    const precip = hourly.precipitation_probability[idx] || 0;
+    const code = hourly.weather_code[idx];
 
     hourlyHTML += `
       <div class="hourly-item">
