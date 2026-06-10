@@ -1,5 +1,3 @@
-// После деплоя worker.js на Cloudflare Workers вставь сюда URL воркера:
-// например: "https://weather-proxy.ivanov.workers.dev"
 export const PROXY_BASE = ""; // вставь URL Railway после деплоя
 
 export const GEO_URL = PROXY_BASE
