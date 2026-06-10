@@ -1,0 +1,71 @@
+@mixin no-select {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.form {
+    display: flex;
+    gap: 12px;
+    flex-grow: 1;
+}
+form input {
+    flex-grow: 1;
+}
+
+.weather-card {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1rem;
+    --card-current-bg: var(--surface-0);
+    background-color: var(--card-current-bg);
+    border-radius: 1rem;
+    transition: all 0.1s ease-out;
+    transform: scale(1);
+    &:hover {
+        background-color: color-mix(in srgb, var(--card-current-bg), black 10%);
+    }
+    &:active {
+        transform: scale(0.95);
+    }
+    &.theme-sunny {
+        --card-current-bg: #226cb1;
+        color: #fff;
+    }
+    &.theme-cloudy {
+        --card-current-bg: #5c616a;
+        color: #fff;
+    }
+    &.theme-rainy {
+        --card-current-bg: #3b4a5a;
+        color: #fff;
+    }
+    &.theme-rainy {
+        --card-current-bg: #4a6984;
+        color: #fff;
+    }
+
+    &__title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin: 0;
+        @include no-select;
+    }
+    &__temper {
+        font-size: 2rem;
+        line-height: 120%;
+        font-weight: 400;
+        @include no-select;
+    }
+
+    &__link {
+        text-decoration: none;
+        color: inherit;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    &-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+}

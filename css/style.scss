@@ -1,0 +1,145 @@
+/* sass --watch style.scss style.css */
+
+@use "index.scss";
+@use "weather.scss";
+@use "adaptive.scss";
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300..600&subsets=latin,latin-ext,cyrillic&display=swap");
+
+@mixin dark-theme {
+    --surface-0: #2a2a2a;
+    --surface-1: #1b1b1b;
+    --text: #ebebeb;
+    --subtext: #ebebeb9a;
+    --btn-bg: #393939;
+    --input-bg: #101010;
+}
+
+:root {
+    --surface-0: #f0f0f0;
+    --surface-1: #e0e0e0;
+    --text: #1d1d1d;
+    --subtext: #1d1d1d9a;
+    --btn-bg: #d3d3d3;
+    --input-bg: #cfcfcf;
+}
+[data-theme="dark"] {
+    @include dark-theme;
+}
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+        @include dark-theme;
+    }
+}
+
+html {
+    font-family:
+        "Inter",
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Oxygen,
+        Ubuntu,
+        Cantarell,
+        "Open Sans",
+        "Helvetica Neue",
+        sans-serif;
+    font-size: 1.25rem;
+    line-height: 140%;
+    font-weight: 500;
+    color: var(--text);
+    background-color: var(--surface-1);
+    transition: background-color 0.2s ease-out;
+}
+body {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+header {
+    background-color: var(--surface-1);
+    transition: background-color 0.2s ease-out;
+}
+main {
+    flex-grow: 1;
+    overflow-y: auto;
+    scrollbar-color: #808080 transparent;
+}
+body,
+p,
+h1 {
+    margin: 0;
+}
+
+.no-select {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+button {
+    padding-block: 0.5rem;
+    padding-inline: 1rem;
+    font-size: 1rem;
+    font-family: inherit;
+    font-weight: inherit;
+    border: 0;
+    border-radius: 12px;
+    background-color: var(--btn-bg);
+    transition: background-color 0.1s ease-out;
+    color: var(--text);
+    @extend .no-select;
+    &:hover {
+        background-color: color-mix(in srgb, var(--btn-bg), black 5%);
+    }
+    &:active {
+        background-color: color-mix(in srgb, var(--btn-bg), black 10%);
+    }
+}
+
+input {
+    padding: 0.75rem 1.5rem;
+    background-color: var(--input-bg);
+    border: 0;
+    border-radius: 16px;
+    font-size: 1.25rem;
+    font-family: inherit;
+    font-weight: inherit;
+    color: var(--text);
+    min-width: 0;
+    transition: background-color 0.2s ease-out;
+}
+
+.site-name {
+    font-size: 1.25rem;
+    font-weight: 500;
+    width: fit-content;
+    @extend .no-select;
+}
+
+.header {
+    &__container {
+        padding: 0.75rem 1.25rem;
+        margin: auto;
+        max-width: 1200px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    &__btn-grp {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+.container {
+    padding: 1.5rem 1.25rem;
+    margin: auto;
+    max-width: 1200px;
+    display: flex;
+    gap: 24px;
+    flex-direction: column;
+}

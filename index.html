@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link href="css/style.css" rel="stylesheet" />
+        <title>Панель погоды</title>
+    </head>
+    <body>
+        <header>
+            <div class="header__container">
+                <h1 class="site-name">Панель погоды</h1>
+                <div class="header__btn-grp">
+                    <button
+                        type="button"
+                        class="toggle-unit-btn"
+                        aria-label="Сменить единицы измерения температуры"
+                    >
+                        Показать в °F
+                    </button>
+                    <button
+                        type="button"
+                        class="toggle-theme-btn"
+                        aria-label="Переключить темы оформления"
+                    >
+                        🌙
+                    </button>
+                </div>
+            </div>
+        </header>
+        <main>
+            <div class="container">
+                <form class="form">
+                    <input
+                        type="search"
+                        name="city"
+                        id="city-input"
+                        placeholder="Введите название города"
+                        aria-label="Введите название города для поиска"
+                    />
+                    <button type="submit" id="submit">Добавить</button>
+                </form>
+                <div class="weather-card-grid"></div>
+            </div>
+        </main>
+        <script type="module" src="js/index.js"></script>
+    </body>
+</html>

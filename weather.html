@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link href="css/style.css" rel="stylesheet" />
+        <title>Панель погоды</title>
+    </head>
+    <body>
+        <header>
+            <div class="header__container">
+                <h1 class="site-name">Панель погоды</h1>
+                <div class="header__btn-grp">
+                    <button
+                        type="button"
+                        class="toggle-unit-btn"
+                        aria-label="Сменить единицы измерения температуры"
+                    >
+                        Показать в °F
+                    </button>
+                    <button
+                        type="button"
+                        class="toggle-theme-btn"
+                        aria-label="Переключить тему оформления"
+                    >
+                        🌙
+                    </button>
+                </div>
+            </div>
+        </header>
+        <main class="weather">
+            <div class="container">
+                <div class="button-group">
+                    <button type="button" class="back-btn">Назад</button>
+                    <button type="button" class="favorite-btn">
+                        Удалить из избранного
+                    </button>
+                </div>
+                <div class="main-info">
+                    <h2 class="weather__city">Загрузка...</h2>
+                    <div class="temper-group">
+                        <data value="" class="weather__temper">??°C</data>
+                        <p class="weather__wthr">Загрузка...</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card__label">Погода на 6 дней</h3>
+                    <ul class="six-days-grid">
+                        <li class="six-days">
+                            <time datetime="" class="six-days__date">...</time>
+                            <span>...</span>
+                        </li>
+                        <li class="six-days">
+                            <time datetime="" class="six-days__date">...</time>
+                            <span>...</span>
+                        </li>
+                        <li class="six-days">
+                            <time datetime="" class="six-days__date">...</time>
+                            <span>...</span>
+                        </li>
+                        <li class="six-days">
+                            <time datetime="" class="six-days__date">...</time>
+                            <span>...</span>
+                        </li>
+                        <li class="six-days">
+                            <time datetime="" class="six-days__date">...</time>
+                            <span>...</span>
+                        </li>
+                        <li class="six-days">
+                            <time datetime="" class="six-days__date">...</time>
+                            <span>...</span>
+                        </li>
+                    </ul>
+                </div>
+                <ul class="card-grid">
+                    <li class="card">
+                        <h3 class="card__label">💧 Влажность</h3>
+                        <span class="card__context">Загрузка...</span>
+                    </li>
+                    <li class="card">
+                        <h3 class="card__label">💨 Скорость ветра</h3>
+                        <span class="card__context">Загрузка...</span>
+                    </li>
+                    <li class="card">
+                        <h3 class="card__label">🌧 Вероятность осадков</h3>
+                        <span class="card__context">Загрузка...</span>
+                    </li>
+                    <li class="card">
+                        <h3 class="card__label">🌡 Ощущается как</h3>
+                        <span class="card__context">Загрузка...</span>
+                    </li>
+                    <li class="card">
+                        <h3 class="card__label">📉 Давление</h3>
+                        <span class="card__context">Загрузка...</span>
+                    </li>
+                </ul>
+            </div>
+        </main>
+        <script type="module" src="js/weather.js"></script>
+    </body>
+</html>
