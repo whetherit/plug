@@ -1,6 +1,7 @@
 import {
+  WTTR_URL,
   GEO_URL,
-  WEATHER_URL,
+  REVERSE_GEO_URL,
   getWeatherDescription,
   setupUnitToggle,
   getSavedCities,
@@ -9,7 +10,6 @@ import {
   getWeatherTheme,
 } from "./script.js";
 
-const REVERSE_GEO_URL = "https://svtapp.ru/proxy/reverse";
 const form = document.querySelector(".form");
 const input = document.querySelector("#city-input");
 const grid = document.querySelector(".weather-card-grid");
@@ -17,6 +17,7 @@ let savedCities = getSavedCities();
 let currentUnit = localStorage.getItem("weather_unit") || "C";
 
 async function getCityWeather(cityName) {
+  // Геокодинг через Open-Meteo — получаем русское название и координаты
   const geoRes = await fetch(
     `${GEO_URL}?name=${encodeURIComponent(cityName)}&count=1&language=ru&format=json`,
   );
@@ -28,17 +29,16 @@ async function getCityWeather(cityName) {
 
   const { latitude, longitude, name } = geoData.results[0];
 
-  const weatherRes = await fetch(
-    `${WEATHER_URL}?latitude=${latitude}&longitude=${longitude}` +
-      `&current=temperature_2m,weather_code` +
-      `&timezone=auto`,
-  );
-  const weatherData = await weatherRes.json();
+  // Погода через wttr.in по координатам
+  const wttrRes = await fetch(`${WTTR_URL}/${latitude},${longitude}?format=j1`);
+  if (!wttrRes.ok) throw new Error(`Ошибка загрузки погоды для "${cityName}"`);
+  const wttrData = await wttrRes.json();
+  const current = wttrData.current_condition[0];
 
   return {
     name,
-    temp: weatherData.current.temperature_2m,
-    code: weatherData.current.weather_code,
+    temp: parseFloat(current.temp_C),
+    code: parseInt(current.weatherCode),
     lat: latitude,
     lon: longitude,
   };
@@ -53,8 +53,7 @@ function renderCard(data) {
   if (currentUnit === "F") displayTemp = Math.round(data.temp * 1.8 + 32);
 
   const card = document.createElement("article");
-  card.className = "weather-card";
-  card.classList.add(getWeatherTheme(data.code));
+  card.className = `weather-card ${getWeatherTheme(data.code)}`;
   card.innerHTML = `
     <h2 class="weather-card__title">${data.name}</h2>
     <p class="weather-card__temper">${displayTemp}°${currentUnit}</p>
