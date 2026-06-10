@@ -12,9 +12,15 @@ import {
 
 const form = document.querySelector(".form");
 const input = document.querySelector("#city-input");
+const submitBtn = document.querySelector("#submit");
 const grid = document.querySelector(".weather-card-grid");
 let savedCities = getSavedCities();
 let currentUnit = localStorage.getItem("weather_unit") || "C";
+
+submitBtn.disabled = true;
+input.addEventListener("input", () => {
+  submitBtn.disabled = input.value.trim() === "";
+});
 
 async function getCityWeather(cityName) {
   // Геокодинг через Open-Meteo — получаем русское название и координаты
@@ -118,7 +124,8 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const city = input.value.trim();
 
-  if (!city || savedCities.some((c) => c.toLowerCase() === city.toLowerCase())) {
+  if (!city) return;
+  if (savedCities.some((c) => c.toLowerCase() === city.toLowerCase())) {
     alert("Этот город уже в списке!");
     return;
   }
