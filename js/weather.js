@@ -193,7 +193,7 @@ function renderHourlyForecast(weather) {
   }
 
   let startIdx = 0;
-  for (let i = 0; i < slots.length; i++) {
+  for (let i = 0; i < slots.length && i < 8; i++) {
     if (parseInt(slots[i].time) / 100 <= currentHour) startIdx = i;
     else break;
   }
